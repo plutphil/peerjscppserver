@@ -1,0 +1,141 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="s.css">
+	<title>Document</title>
+</head>
+<body>
+	<script src="/peerjs.min.js"></script>
+	<div id="peerid">NOTHING</div>
+	<div id="c">
+<textarea id="textareachat"></textarea><br>
+<input id="inputmsgtext"/><button onclick="sendmsg()">SEND</button><br>
+</div>
+<input id="inputpeerid"/><button onclick="connect();">connect</button><br>
+<input id="fileinput" type="file" name="name" /> 
+<button onclick="sendFile();">SendFile</button>
+<br>
+
+<script>
+const divpeerid=document.getElementById("peerid");
+const inputpeerid=document.getElementById("inputpeerid");
+const inputmsgtext=document.getElementById("inputmsgtext");
+
+const textareachat=document.getElementById("textareachat");
+console.log("hi");
+/*{style="display: none;"
+  config: {'iceServers': [
+    { urls: ['stun:stun.l.google.com:19302'] }/*,
+    { url: 'turn:homeo@turn.bistri.com:80', credential: 'homeo' }
+  ]} /* Sample servers, please use appropriate ones *
+},*/
+var peer = new Peer(
+undefined, {
+  host: '/',
+  //port: '3001'
+  port: '9002'
+});
+peer.on('open', id => {
+  console.log('My peer ID is: ' + id);
+  divpeerid.innerText=id;
+});
+/*var peer2 = new Peer(
+undefined, {
+  host: '/',
+  port: '3001'
+});
+peer2.on('open', id => {
+  console.log('My c++ peer ID is: ' + id);
+  
+});*/
+var conn = null;
+function savetoblob(data){
+var arr = data.file;
+var byteArray = new Uint8Array(arr);
+var a = window.document.createElement('a');
+
+a.href = window.URL.createObjectURL(new Blob([byteArray], { type: 'application/octet-stream' }));
+a.download = data.filename;
+
+// Append anchor to body.
+document.body.appendChild(a)
+a.click();
+
+
+// Remove anchor from body
+document.body.removeChild(a)
+}
+function receive(msg){
+	if(typeof msg==ArrayBuffer){
+		savetoblob(msg);
+	}
+}
+peer.on('connection', function(con){
+	console.log(con);
+    con.on('data', function(data){
+		receive(data);
+        console.log('Incoming data', data);
+		if((data)=='REPLY'){
+			con.send('WORKING');
+		}
+		textareachat.value+="u:"+data+"\n";
+        //con.send('REPLY');
+    });
+	conn = con;
+});
+function connect(){
+	let peerid= inputpeerid.value;
+	conn = peer.connect(peerid);
+	console.log("connectig to "+peerid);
+	conn.on('open', function() {
+		console.log("connection open");
+	  conn.on('data', function(data) {
+		receive(data);
+		console.log('Received', data);
+		
+		textareachat.value+="u:"+data+"\n";
+		
+	  });
+	  conn.send('REPLY');
+	});
+}
+
+function sendmsg(){
+	let msg= inputmsgtext.value;
+	conn.send(msg);
+	textareachat.value+="i:"+msg+"\n";
+	inputmsgtext.value="";
+}
+inputmsgtext.addEventListener("keyup", function(event) {
+    if (event.key === "Enter") {
+        sendmsg();
+    }
+});
+
+
+var fileinput = document.getElementById('fileinput');
+fileinput.type = 'file';
+
+fileinput.addEventListener('change', function(){
+    var reader = new FileReader();
+	var file=this.files[0];
+    reader.onload = function(){
+        var arrayBuffer = this.result;
+		console.log(arrayBuffer);
+        //document.querySelector('#result').innerHTML = arrayBuffer + '  '+arrayBuffer.byteLength;
+		conn.send({filename:file.filename,data:arrayBuffer});
+    }
+    reader.readAsArrayBuffer(file);
+	
+  }, false);
+function sendFile(){
+	
+
+}
+</script>
+</body>
+</html>
